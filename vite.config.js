@@ -10,23 +10,20 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'Moodboard Memory Capsule',
-        short_name: 'Moodboard',
-        description: 'A shared memory capsule for our aesthetic memories.',
-        theme_color: '#ff66cc',
-        background_color: '#1a1a2e',
+        name: 'Bitácora de Visitas',
+        short_name: 'Bitácora',
+        description: 'Diario compartido de nuestras visitas',
+        theme_color: '#00a8e8',
+        background_color: '#061e26',
         display: 'standalone',
         icons: [
           {
-            src: '/pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: '/pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
+            src: '/favicon.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any maskable'
           }
         ]
       }

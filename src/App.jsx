@@ -5,6 +5,8 @@ import PlaceTimeline from './views/PlaceTimeline';
 import PlacesMap from './views/PlacesMap';
 import { useState } from 'react';
 import CaptureMemoryModal from './components/CaptureMemoryModal';
+import Login from './views/Login';
+import InstallAppButton from './components/InstallAppButton';
 
 function AppContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -35,6 +37,7 @@ function AppContent() {
               Bitácora de Visitas
             </h1>
           </Link>
+          <InstallAppButton />
         </div>
       </header>
 
@@ -93,6 +96,14 @@ function AppContent() {
 }
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    localStorage.getItem('bitacora_auth') === 'true'
+  );
+
+  if (!isAuthenticated) {
+    return <Login onLogin={() => setIsAuthenticated(true)} />;
+  }
+
   return (
     <Router>
       <AppContent />
