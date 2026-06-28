@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, Tag as TagIcon, Loader2 } from 'lucide-react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { ArrowLeft, MapPin, Tag as TagIcon, Loader2, Trash2 } from 'lucide-react';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function PlaceTimeline() {
   const { id } = useParams();
   const [place, setPlace] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [deletingMemoryId, setDeletingMemoryId] = useState(null);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'places', id), (docSnapshot) => {
@@ -21,6 +23,21 @@ export default function PlaceTimeline() {
     return () => unsub();
   }, [id]);
 
+  const handleDeleteMemory = async () => {
+    if (!deletingMemoryId || !place) return;
+    try {
+      const updatedMemories = place.memories.map(m => 
+        m.id === deletingMemoryId ? { ...m, isDeleted: true } : m
+      );
+      await updateDoc(doc(db, 'places', place.id), {
+        memories: updatedMemories
+      });
+    } catch (error) {
+      console.error("Error al borrar memoria", error);
+    }
+    setDeletingMemoryId(null);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -31,8 +48,10 @@ export default function PlaceTimeline() {
 
   if (!place) return <div className="text-center py-20 font-bold text-gray-500">Lugar no encontrado</div>;
 
-  // sort memories descending
-  const placeMemories = place.memories ? [...place.memories].sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
+  // sort memories descending and filter deleted
+  const placeMemories = place.memories 
+    ? [...place.memories].filter(m => !m.isDeleted).sort((a, b) => new Date(b.date) - new Date(a.date)) 
+    : [];
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto">
@@ -71,7 +90,13 @@ export default function PlaceTimeline() {
                 style={{ backgroundColor: mainColor }}
               />
               
-              <div className="glass-card rounded-3xl overflow-hidden aero-glow transition-all hover:shadow-[0_8px_30px_rgba(0,168,232,0.15)]">
+              <div 
+                className="glass-card rounded-3xl overflow-hidden aero-glow transition-all hover:shadow-[0_8px_30px_rgba(0,168,232,0.15)]"
+                style={{
+                  backgroundColor: `${mainColor}15`,
+                  borderColor: `${mainColor}40`
+                }}
+              >
                 {/* Photo */}
                 <div className="w-full aspect-square sm:aspect-[4/3] bg-gray-100 dark:bg-gray-800 relative overflow-hidden">
                   <img 
@@ -92,26 +117,28 @@ export default function PlaceTimeline() {
 
                 {/* Content */}
                 <div className="p-5 flex flex-col gap-4">
-                  {/* Extracted Colors */}
-                  <div className="flex h-8 w-full rounded-xl overflow-hidden shadow-inner">
-                    {memory.colors.map((color, idx) => (
-                      <div key={idx} className="flex-1" style={{ backgroundColor: color }} />
-                    ))}
-                  </div>
-
                   {/* Notes */}
                   <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
                     {memory.notes}
                   </p>
 
-                  {/* Tags */}
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {memory.tags.map(tag => (
-                      <span key={tag} className="inline-flex items-center gap-1 text-xs font-bold bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-300 px-3 py-1.5 rounded-xl border border-gray-200/50 dark:border-gray-700/50">
-                        <TagIcon size={12} />
-                        {tag}
-                      </span>
-                    ))}
+                  {/* Tags and Delete Button */}
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="flex flex-wrap gap-2">
+                      {memory.tags.map(tag => (
+                        <span key={tag} className="inline-flex items-center gap-1 text-xs font-bold bg-white/50 dark:bg-black/20 text-[#0b3b4d] dark:text-gray-200 px-3 py-1.5 rounded-xl border border-white/60 dark:border-gray-700/50 shadow-sm backdrop-blur-md">
+                          <TagIcon size={12} />
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                    
+                    <button
+                      onClick={() => setDeletingMemoryId(memory.id)}
+                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors shrink-0"
+                    >
+                      <Trash2 size={18} />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -123,6 +150,14 @@ export default function PlaceTimeline() {
           <div className="text-gray-500 py-10">No hay recuerdos aquí.</div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={!!deletingMemoryId}
+        onClose={() => setDeletingMemoryId(null)}
+        onConfirm={handleDeleteMemory}
+        title="Ocultar recuerdo"
+        message="¿Estás seguro de que quieres ocultar este recuerdo de la bitácora?"
+      />
     </div>
   );
 }

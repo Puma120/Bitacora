@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { MapPin, Image as ImageIcon, Loader2, Trash2 } from 'lucide-react';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function Home() {
   const [places, setPlaces] = useState([]);
@@ -14,12 +15,26 @@ export default function Home() {
       const placesData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      })).filter(place => !place.isDeleted);
+      
       setPlaces(placesData);
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
+
+  const [deletingPlaceId, setDeletingPlaceId] = useState(null);
+
+  const handleDelete = async () => {
+    if (!deletingPlaceId) return;
+    try {
+      await updateDoc(doc(db, 'places', deletingPlaceId), {
+        isDeleted: true
+      });
+    } catch (error) {
+      console.error("Error al borrar el lugar:", error);
+    }
+  };
 
   if (loading) {
     return (
@@ -70,15 +85,35 @@ export default function Home() {
                     )}
                 </div>
                 
-                <div className="flex flex-col items-center justify-center glass rounded-xl p-2 min-w-[3rem]">
-                  <ImageIcon size={16} className="text-[var(--primary)] mb-1" />
-                  <span className="text-sm font-bold text-[#0b3b4d] dark:text-white">{place.memories?.length || 0}</span>
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-col items-center justify-center glass rounded-xl p-2 min-w-[3rem]">
+                    <ImageIcon size={16} className="text-[var(--primary)] mb-1" />
+                    <span className="text-sm font-bold text-[#0b3b4d] dark:text-white">{place.memories?.filter(m => !m.isDeleted).length || 0}</span>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDeletingPlaceId(place.id);
+                    }}
+                    className="flex items-center justify-center glass rounded-xl p-2 text-gray-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </div>
             </Link>
           ))}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!deletingPlaceId}
+        onClose={() => setDeletingPlaceId(null)}
+        onConfirm={handleDelete}
+        title="Ocultar lugar"
+        message="¿Estás seguro de que quieres ocultar este lugar y todas sus memorias de la bitácora?"
+      />
     </div>
   );
 }

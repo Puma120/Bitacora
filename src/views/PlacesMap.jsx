@@ -33,7 +33,7 @@ export default function PlacesMap() {
       const placesData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      })).filter(p => p.lat && p.lng); // Only keep places with coordinates
+      })).filter(p => p.lat && p.lng && !p.isDeleted); // Keep active places with coordinates
       
       setPlaces(placesData);
       setLoading(false);
@@ -107,7 +107,7 @@ export default function PlacesMap() {
                   {place.name}
                 </h3>
                 <span className="text-sm text-gray-500 font-medium">
-                  {place.memories?.length || 0} recuerdos aquí
+                  {place.memories?.filter(m => !m.isDeleted).length || 0} recuerdos aquí
                 </span>
                 
                 <div className="flex gap-2 mt-2">
