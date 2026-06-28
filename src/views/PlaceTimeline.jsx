@@ -91,14 +91,19 @@ export default function PlaceTimeline() {
               />
               
               <div 
-                className="glass-card rounded-3xl overflow-hidden aero-glow transition-all hover:shadow-[0_8px_30px_rgba(0,168,232,0.15)]"
+                className="glass-card rounded-3xl overflow-hidden aero-glow transition-all hover:shadow-[0_8px_30px_rgba(0,168,232,0.15)] relative"
                 style={{
-                  backgroundColor: `${mainColor}15`,
-                  borderColor: `${mainColor}40`
+                  borderColor: `${mainColor}60`
                 }}
               >
+                {/* Color Tint Overlay */}
+                <div 
+                  className="absolute inset-0 pointer-events-none opacity-15 dark:opacity-30 mix-blend-color z-0"
+                  style={{ backgroundColor: mainColor }}
+                />
+                
                 {/* Photo */}
-                <div className="w-full aspect-square sm:aspect-[4/3] bg-gray-100 dark:bg-gray-800 relative overflow-hidden">
+                <div className="w-full aspect-square sm:aspect-[4/3] bg-gray-100 dark:bg-gray-800 relative overflow-hidden z-10">
                   <img 
                     src={memory.imageUrl} 
                     alt="Recuerdo" 
@@ -116,7 +121,7 @@ export default function PlaceTimeline() {
                 </div>
 
                 {/* Content */}
-                <div className="p-5 flex flex-col gap-4">
+                <div className="p-5 flex flex-col gap-4 relative z-10">
                   {/* Notes */}
                   <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
                     {memory.notes}
