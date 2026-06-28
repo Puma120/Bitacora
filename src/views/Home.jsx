@@ -38,7 +38,7 @@ export default function Home() {
       
       {places.length === 0 ? (
         <div className="text-center py-10 text-gray-500">
-          Aún no han guardado lugares. ¡Abre el botón + para empezar!
+          Aún no hemos guardado lugares, hay que empezar
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
