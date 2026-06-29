@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { Link } from 'react-router-dom';
 import { divIcon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapPin, Loader2 } from 'lucide-react';
+import { MapPin, Loader2, Navigation } from 'lucide-react';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
@@ -11,11 +11,13 @@ import { db } from '../firebase/config';
 function MapUpdater({ center }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center, map.getZoom());
-    const timeout = setTimeout(() => {
-      map.invalidateSize();
-    }, 400); // Wait for animations to finish
-    return () => clearTimeout(timeout);
+    if (center) {
+      map.setView(center, map.getZoom());
+      const timeout = setTimeout(() => {
+        map.invalidateSize();
+      }, 400); // Wait for animations to finish
+      return () => clearTimeout(timeout);
+    }
   }, [center, map]);
   return null;
 }
@@ -23,11 +25,25 @@ function MapUpdater({ center }) {
 export default function PlacesMap() {
   const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState(null);
 
   // Default to Plaza San Diego, Puebla
   const defaultCenter = [19.0638, -98.2831];
 
   useEffect(() => {
+    // Get user location
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation([position.coords.latitude, position.coords.longitude]);
+        },
+        (error) => {
+          console.error("Error obteniendo ubicación:", error);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+
     const q = query(collection(db, 'places'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const placesData = snapshot.docs.map(doc => ({
@@ -68,6 +84,28 @@ export default function PlacesMap() {
     });
   };
 
+  const userLocationIcon = divIcon({
+    className: 'user-marker',
+    html: `
+      <div style="
+        background-color: #22c55e90;
+        border: 2px solid white;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 15px rgba(34, 197, 94, 0.5);
+        backdrop-filter: blur(4px);
+      ">
+        <div style="background-color: #22c55e; width: 12px; height: 12px; border-radius: 50%;"></div>
+      </div>
+    `,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+  });
+
   if (loading) {
     return (
       <div className="flex-1 w-full h-full flex items-center justify-center bg-gray-50 dark:bg-[#061e26] absolute inset-0 z-0">
@@ -76,10 +114,8 @@ export default function PlacesMap() {
     );
   }
 
-  // Calculate center based on places or default
-  const center = places.length > 0 
-    ? [places[0].lat, places[0].lng]
-    : defaultCenter;
+  // Center on user location if available, else fallback to default or first place
+  const center = userLocation || defaultCenter;
 
   return (
     <div className="w-full h-[calc(100vh-140px)] rounded-3xl overflow-hidden glass-card aero-glow border border-white/50 dark:border-[#134e63] relative z-0 animate-in fade-in zoom-in-95 duration-500">
@@ -94,6 +130,14 @@ export default function PlacesMap() {
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
+
+        {userLocation && (
+          <Marker position={userLocation} icon={userLocationIcon}>
+            <Popup className="glass-popup">
+              <div className="font-bold text-center">¡Estás aquí! 📍</div>
+            </Popup>
+          </Marker>
+        )}
 
         {places.map((place) => (
           <Marker 

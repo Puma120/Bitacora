@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Image as ImageIcon, Loader2, Trash2 } from 'lucide-react';
+import { MapPin, Image as ImageIcon, Loader2, Trash2, Star } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import ConfirmModal from '../components/ConfirmModal';
 
-export default function Home() {
+export default function Wishlist() {
   const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -15,7 +15,7 @@ export default function Home() {
       const placesData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      })).filter(place => !place.isDeleted && !place.isWishlist);
+      })).filter(place => !place.isDeleted && place.isWishlist === true);
       
       setPlaces(placesData);
       setLoading(false);
@@ -47,13 +47,16 @@ export default function Home() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-end justify-between">
-        <h2 className="text-2xl font-bold">Nuestros lugares favoritos</h2>
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          <Star className="text-[var(--primary)] fill-current" size={24} />
+          Lugares Deseados
+        </h2>
         <span className="text-sm text-gray-500 font-medium">{places.length} lugares</span>
       </div>
       
       {places.length === 0 ? (
         <div className="text-center py-10 text-gray-500">
-          Aún no hemos guardado lugares, hay que empezar
+          Aún no hay lugares deseados. ¡Agrega uno a la Wishlist!
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

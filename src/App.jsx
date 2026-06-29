@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Sparkles, Plus, Map as MapIcon, List as ListIcon } from 'lucide-react';
+import { Sparkles, Plus, Map as MapIcon, List as ListIcon, Star } from 'lucide-react';
 import Home from './views/Home';
+import Wishlist from './views/Wishlist';
 import PlaceTimeline from './views/PlaceTimeline';
 import PlacesMap from './views/PlacesMap';
 import { useState } from 'react';
@@ -21,6 +22,7 @@ function AppContent() {
   const isTimeline = location.pathname.includes('/place/');
   const currentPathId = isTimeline ? location.pathname.split('/place/')[1] : null;
   
+  const isWishlistActive = location.pathname === '/wishlist';
   const isListActive = location.pathname === '/' || location.pathname.startsWith('/place/');
   const isMapActive = location.pathname === '/map';
 
@@ -45,6 +47,7 @@ function AppContent() {
       <main className="max-w-2xl mx-auto px-4 relative z-0">
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/map" element={<PlacesMap />} />
           <Route path="/place/:id" element={<PlaceTimeline onAddMemory={() => handleOpenModal()} />} />
         </Routes>
@@ -68,12 +71,20 @@ function AppContent() {
           <div className="glass-card flex items-center justify-around p-2 rounded-3xl border border-white/60 shadow-[0_10px_30px_rgba(0,168,232,0.3)] bg-white/70 dark:bg-[#0b2f3d]/70">
             <Link 
               to="/" 
-              className={`flex-1 flex flex-col items-center py-2 px-4 rounded-2xl transition-all ${isListActive ? 'bg-white/50 dark:bg-black/20 text-[var(--primary)] shadow-inner' : 'text-gray-500 hover:bg-white/30'}`}
+              className={`flex-1 flex flex-col items-center py-2 px-4 rounded-2xl transition-all ${isListActive && !isWishlistActive ? 'bg-white/50 dark:bg-black/20 text-[var(--primary)] shadow-inner' : 'text-gray-500 hover:bg-white/30'}`}
             >
               <ListIcon size={20} className="mb-1" />
               <span className="text-[10px] font-bold uppercase tracking-wider">Lista</span>
             </Link>
             
+            <Link 
+              to="/wishlist" 
+              className={`flex-1 flex flex-col items-center py-2 px-4 rounded-2xl transition-all ${isWishlistActive ? 'bg-white/50 dark:bg-black/20 text-[var(--primary)] shadow-inner' : 'text-gray-500 hover:bg-white/30'}`}
+            >
+              <Star size={20} className="mb-1" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Deseos</span>
+            </Link>
+
             <Link 
               to="/map" 
               className={`flex-1 flex flex-col items-center py-2 px-4 rounded-2xl transition-all ${isMapActive ? 'bg-white/50 dark:bg-black/20 text-[var(--primary)] shadow-inner' : 'text-gray-500 hover:bg-white/30'}`}

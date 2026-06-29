@@ -103,22 +103,36 @@ export default function PlaceTimeline() {
                 />
                 
                 {/* Photo */}
-                <div className="w-full aspect-square sm:aspect-[4/3] bg-gray-100 dark:bg-gray-800 relative overflow-hidden z-10">
-                  <img 
-                    src={memory.imageUrl} 
-                    alt="Recuerdo" 
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
-                  
-                  {/* Date badge on top of image */}
-                  <div className="absolute top-4 left-4 glass px-3 py-1.5 rounded-xl text-sm font-bold text-gray-800 dark:text-white shadow-sm">
-                    {new Date(memory.date).toLocaleDateString('es-MX', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric'
-                    })}
+                {memory.imageUrl && (
+                  <div className="w-full aspect-square sm:aspect-[4/3] bg-gray-100 dark:bg-gray-800 relative overflow-hidden z-10">
+                    <img 
+                      src={memory.imageUrl} 
+                      alt="Recuerdo" 
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                    
+                    {/* Date badge on top of image */}
+                    <div className="absolute top-4 left-4 glass px-3 py-1.5 rounded-xl text-sm font-bold text-gray-800 dark:text-white shadow-sm">
+                      {new Date(memory.date).toLocaleDateString('es-MX', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {!memory.imageUrl && (
+                  <div className="pt-6 px-5 relative z-10">
+                    <div className="inline-block bg-gray-100 dark:bg-black/20 px-3 py-1.5 rounded-xl text-sm font-bold text-gray-800 dark:text-gray-200 shadow-sm">
+                      {new Date(memory.date).toLocaleDateString('es-MX', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Content */}
                 <div className="p-5 flex flex-col gap-4 relative z-10">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Upload, MapPin, Tag as TagIcon, Sparkles, Plus, Loader2 } from 'lucide-react';
+import { X, Upload, MapPin, Tag as TagIcon, Sparkles, Plus, Loader2, Star } from 'lucide-react';
 import { getPalette } from 'colorthief';
 import { collection, query, where, getDocs, addDoc, updateDoc, arrayUnion, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -30,14 +30,17 @@ function LocationPicker({ position, setPosition }) {
   );
 }
 
-function ModalMapUpdater() {
+function ModalMapUpdater({ center }) {
   const map = useMap();
   useEffect(() => {
+    if (center) {
+      map.setView(center, map.getZoom());
+    }
     const timeout = setTimeout(() => {
       map.invalidateSize();
     }, 300);
     return () => clearTimeout(timeout);
-  }, [map]);
+  }, [map, center]);
   return null;
 }
 
@@ -59,11 +62,14 @@ export default function CaptureMemoryModal({ isOpen, onClose, defaultPlaceId }) 
   const [mapsUrl, setMapsUrl] = useState('');
   const [diaryText, setDiaryText] = useState('');
   
-  // Existing place data
   const [existingPlaceName, setExistingPlaceName] = useState('');
+  
+  // Wishlist toggle
+  const [isWishlist, setIsWishlist] = useState(false);
   
   // Map Location
   const [selectedLocation, setSelectedLocation] = useState(null);
+  const [mapCenter, setMapCenter] = useState([19.0638, -98.2831]);
   
   // Submit state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,8 +92,28 @@ export default function CaptureMemoryModal({ isOpen, onClose, defaultPlaceId }) 
       setExistingPlaceName('');
       setPlaceTitle('');
       setSelectedLocation(null);
+      setMapCenter([19.0638, -98.2831]);
       setMapsUrl('');
       setMemoryDate(new Date().toISOString().split('T')[0]);
+      setIsWishlist(false);
+    }
+  }, [isOpen, defaultPlaceId]);
+
+  useEffect(() => {
+    if (isOpen && !defaultPlaceId) {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            setMapCenter([lat, lng]);
+            // Solo establecer el pin si el usuario no ha tocado el mapa aún
+            setSelectedLocation(prev => prev || { lat, lng });
+          },
+          (error) => console.error("Error ubicación modal:", error),
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      }
     }
   }, [isOpen, defaultPlaceId]);
   
@@ -169,15 +195,24 @@ export default function CaptureMemoryModal({ isOpen, onClose, defaultPlaceId }) 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if ((!defaultPlaceId && !placeTitle) || !diaryText || !imageFile) {
-      alert("Por favor llena la información requerida.");
+    
+    const isVisit = defaultPlaceId || !isWishlist;
+    if (isVisit && (!diaryText || !imageFile)) {
+      alert("Para una visita, la foto y el diario son requeridos.");
+      return;
+    }
+    if (!defaultPlaceId && !placeTitle) {
+      alert("Por favor dale un título al lugar.");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // 1. Upload Image
-      const imageUrl = await uploadToCloudinary(imageFile);
+      // 1. Upload Image (Optional for Wishlist)
+      let imageUrl = null;
+      if (imageFile) {
+        imageUrl = await uploadToCloudinary(imageFile);
+      }
 
       // 2. Prepare Memory Object
       // Use the selected date (force time to noon to avoid timezone date shifting issues)
@@ -188,7 +223,7 @@ export default function CaptureMemoryModal({ isOpen, onClose, defaultPlaceId }) 
         imageUrl: imageUrl,
         colors: extractedColors,
         tags: selectedTags,
-        notes: diaryText,
+        notes: diaryText || (isWishlist ? "¡Queremos ir a este lugar! ✨" : ""),
         date: dateIso
       };
 
@@ -196,7 +231,8 @@ export default function CaptureMemoryModal({ isOpen, onClose, defaultPlaceId }) 
         // Update existing directly by ID
         const placeRef = doc(db, 'places', defaultPlaceId);
         await updateDoc(placeRef, {
-          memories: arrayUnion(newMemory)
+          memories: arrayUnion(newMemory),
+          isWishlist: false // Automatically move to visited if adding a memory
         });
       } else {
         // 3. Check if Place Exists by Name
@@ -209,17 +245,18 @@ export default function CaptureMemoryModal({ isOpen, onClose, defaultPlaceId }) 
           const existingDoc = querySnapshot.docs[0];
           await updateDoc(existingDoc.ref, {
             memories: arrayUnion(newMemory),
+            isWishlist: false, // Automatically move to visited
             ...(mapsUrl && { mapsUrl }) // Actualizar URL si agregaron una nueva
           });
         } else {
-          // Create new place
           await addDoc(placesRef, {
             name: placeTitle.trim(),
             mapsUrl: mapsUrl,
             lat: selectedLocation?.lat || null,
             lng: selectedLocation?.lng || null,
             createdAt: serverTimestamp(),
-            memories: [newMemory]
+            memories: [newMemory],
+            isWishlist: isWishlist
           });
         }
       }
@@ -234,6 +271,7 @@ export default function CaptureMemoryModal({ isOpen, onClose, defaultPlaceId }) 
         setPlaceTitle('');
         setMapsUrl('');
         setSelectedLocation(null);
+        setIsWishlist(false);
       }
       setDiaryText('');
       setMemoryDate(new Date().toISOString().split('T')[0]);
@@ -273,18 +311,40 @@ export default function CaptureMemoryModal({ isOpen, onClose, defaultPlaceId }) 
             </div>
           )}
 
-          {/* Título del lugar (solo si es nuevo) */}
+          {/* Título del lugar y Toggle (solo si es nuevo) */}
           {!defaultPlaceId && (
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-bold text-[#0b3b4d] dark:text-[#e0f7fa]">Título del lugar</label>
-              <input 
-                type="text" 
-                value={placeTitle}
-                onChange={e => setPlaceTitle(e.target.value)}
-                placeholder="Ej. Cafetería El Jarocho" 
-                className="w-full bg-gray-50 dark:bg-[#0b2f3d] border border-gray-200 dark:border-[#134e63] rounded-xl p-3 text-sm text-[#0b3b4d] dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all"
-                required={!defaultPlaceId}
-              />
+            <div className="flex flex-col gap-4">
+              <div className="flex bg-gray-100 dark:bg-[#0b2f3d] p-1 rounded-2xl relative">
+                <div 
+                  className={`absolute inset-y-1 w-[calc(50%-4px)] bg-white dark:bg-[#134e63] rounded-xl shadow-sm transition-all duration-300 ease-in-out ${isWishlist ? 'left-[calc(50%+2px)]' : 'left-1'}`} 
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsWishlist(false)}
+                  className={`flex-1 relative z-10 py-2 text-sm font-bold transition-colors rounded-xl flex items-center justify-center gap-2 ${!isWishlist ? 'text-[var(--primary)]' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                >
+                  <MapPin size={16} /> Ya lo visitamos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsWishlist(true)}
+                  className={`flex-1 relative z-10 py-2 text-sm font-bold transition-colors rounded-xl flex items-center justify-center gap-2 ${isWishlist ? 'text-[var(--primary)]' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                >
+                  <Star size={16} /> Queremos ir
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-bold text-[#0b3b4d] dark:text-[#e0f7fa]">Título del lugar</label>
+                <input 
+                  type="text" 
+                  value={placeTitle}
+                  onChange={e => setPlaceTitle(e.target.value)}
+                  placeholder="Ej. Cafetería El Jarocho" 
+                  className="w-full bg-gray-50 dark:bg-[#0b2f3d] border border-gray-200 dark:border-[#134e63] rounded-xl p-3 text-sm text-[#0b3b4d] dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all"
+                  required={!defaultPlaceId}
+                />
+              </div>
             </div>
           )}
 
@@ -297,7 +357,7 @@ export default function CaptureMemoryModal({ isOpen, onClose, defaultPlaceId }) 
                 accept="image/*" 
                 className="absolute inset-0 opacity-0 cursor-pointer z-10"
                 onChange={handleImageChange}
-                required
+                required={!isWishlist && !defaultPlaceId}
               />
               {imagePreview ? (
                 <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
@@ -385,12 +445,12 @@ export default function CaptureMemoryModal({ isOpen, onClose, defaultPlaceId }) 
               
               <div className="h-48 w-full rounded-xl overflow-hidden border border-gray-200 dark:border-[#134e63] shadow-inner relative z-0">
                 <MapContainer 
-                  center={[19.0638, -98.2831]} // Plaza San Diego, Puebla
+                  center={mapCenter} 
                   zoom={14} 
                   className="w-full h-full"
                   zoomControl={false}
                 >
-                  <ModalMapUpdater />
+                  <ModalMapUpdater center={mapCenter} />
                   <TileLayer
                     url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                   />
@@ -427,9 +487,9 @@ export default function CaptureMemoryModal({ isOpen, onClose, defaultPlaceId }) 
               rows="4" 
               value={diaryText}
               onChange={e => setDiaryText(e.target.value)}
-              placeholder="¿Qué hizo especial este lugar?..." 
+              placeholder={isWishlist ? "¿Por qué quieren ir a este lugar?..." : "¿Qué hizo especial este lugar?..."} 
               className="w-full bg-gray-50 dark:bg-[#0b2f3d] border border-gray-200 dark:border-[#134e63] rounded-xl p-3 text-sm text-[#0b3b4d] dark:text-white placeholder:text-gray-400 resize-none focus:ring-2 focus:ring-[var(--primary)] outline-none transition-all"
-              required
+              required={!isWishlist && !defaultPlaceId}
             ></textarea>
           </div>
 
