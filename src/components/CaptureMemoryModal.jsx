@@ -493,15 +493,24 @@ export default function CaptureMemoryModal({ isOpen, onClose, defaultPlaceId }) 
             ></textarea>
           </div>
 
-          {/* Submit Button */}
-          <button 
-            type="submit" 
-            disabled={isSubmitting}
-            className="w-full flex items-center justify-center gap-2 btn-glossy font-bold text-lg py-4 rounded-2xl aero-glow mt-2 hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:active:scale-100"
-          >
-            {isSubmitting ? <><Loader2 size={24} className="animate-spin" /> Guardando...</> : 'Guardar Recuerdo 💾'}
-          </button>
-
+          <div className="pt-2">
+            <button 
+              type="submit" 
+              disabled={isSubmitting || isExtracting}
+              className="w-full btn-glossy text-white font-bold py-4 rounded-2xl aero-glow transition-all active:scale-95 flex items-center justify-center gap-2"
+            >
+              {isSubmitting || isExtracting ? (
+                <>
+                  <Loader2 size={20} className="animate-spin" /> 
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  {(!defaultPlaceId && isWishlist) ? 'Guardar Deseo 🌟' : 'Guardar Recuerdo 💾'}
+                </>
+              )}
+            </button>
+          </div>
         </form>
       </div>
     </div>
